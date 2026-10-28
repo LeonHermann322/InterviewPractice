@@ -103,6 +103,43 @@ def main(argv: Sequence[str] | None = None) -> int:
 class FrameworkTests(unittest.TestCase):
     """Run with python -m unittest test.FrameworkTests."""
 
+    def test_dna_logit_check_accepts_arbitrary_names_and_rejects_probabilities(self):
+        import torch
+        from torch import nn
+
+        class NamedMLP(nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.hidden = nn.Linear(24, 16)
+                self.activation = nn.ReLU()
+                self.output = nn.Linear(16, 1)
+
+            def forward(self, x: torch.Tensor) -> torch.Tensor:
+                return self.output(self.activation(self.hidden(x)))
+
+        class SquashedMLP(NamedMLP):
+            def forward(self, x: torch.Tensor) -> torch.Tensor:
+                return torch.sigmoid(super().forward(x))
+
+        solution = DNAExercise.model_solution()
+        for name, factory, should_pass in (
+            ("arbitrary names", NamedMLP, True),
+            ("sequential", lambda: nn.Sequential(nn.Linear(24, 16), nn.ReLU(), nn.Linear(16, 1)), True),
+            ("sigmoid", lambda: nn.Sequential(NamedMLP(), nn.Sigmoid()), False),
+            ("functional sigmoid", SquashedMLP, False),
+        ):
+            model = factory()
+            with self.subTest(model=name), patch.object(solution, "create_model", return_value=model):
+                tests = [
+                    case for case in solution.build_suite()
+                    if case._testMethodName == "test_model_returns_logits_not_probabilities_by_contract"
+                ]
+                self.assertEqual(len(tests), 1)
+                result = unittest.TestResult()
+                unittest.TestSuite(tests).run(result)
+                self.assertEqual(result.testsRun, 1)
+                self.assertEqual(result.wasSuccessful(), should_pass, result.errors + result.failures)
+
     def setUp(self):
         class ExampleExercise(Exercise):
             title = "Example"

@@ -21,6 +21,9 @@ Build Linear(input_dim, hidden_dim) -> ReLU -> Linear(hidden_dim, 1),
 returning raw logits of shape (N, 1). Train with BCEWithLogitsLoss and SGD,
 accepting labels of shape (N,) or (N, 1), and return one scalar loss per epoch.
 Predict binary labels of shape (N, 1) without building a gradient graph.
+Layer attribute names are up to you; nn.Sequential is also supported.
+Unknown bases must raise ValueError or KeyError; unequal sequence lengths
+must raise ValueError.
 
 Implement the functions and DNAClassifier in dna_classifier\\solve_this.py.
 Suggested time box: 20 minutes."""
@@ -110,8 +113,19 @@ Suggested time box: 20 minutes."""
 
             def test_model_returns_logits_not_probabilities_by_contract(self):
                 model = solution.create_model(input_dim=24, hidden_dim=16)
-                self.assertIsInstance(model.fc2, nn.Linear)
-                self.assertEqual(model.fc2.out_features, 1)
+                model.eval()
+                linear_layers = [layer for layer in model.modules() if isinstance(layer, nn.Linear)]
+                self.assertTrue(linear_layers, "The specified MLP must contain Linear layers")
+                # Constant affine outputs expose probability squashing without
+                # depending on layer names, nesting, or module registration order.
+                for logit in (-2.0, 2.0):
+                    with self.subTest(logit=logit), torch.no_grad():
+                        for layer in linear_layers:
+                            layer.weight.zero_()
+                            if layer.bias is not None:
+                                layer.bias.fill_(logit)
+                        output = model(torch.zeros(3, 24))
+                        torch.testing.assert_close(output, torch.full((3, 1), logit))
 
             def test_forward_pass_supports_gradients(self):
                 model = solution.create_model(input_dim=24, hidden_dim=16)

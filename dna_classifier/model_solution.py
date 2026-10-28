@@ -1,10 +1,10 @@
 """Reference solution for the PyTorch interview practice exercise."""
-from typing import Sequence
+from collections.abc import Sequence
+
 import torch
 from torch import nn
 
 from .exercise import DNAExercise
-
 
 BASE_TO_IDX = {"A": 0, "C": 1, "G": 2, "T": 3}
 
@@ -84,10 +84,10 @@ def predict_labels(model: nn.Module, X: torch.Tensor) -> torch.Tensor:
     model.eval()
     with torch.no_grad():
         logits = model(X)
-        preds = (torch.sigmoid(logits) >= 0.5).to(torch.int64)
+        predictions = (torch.sigmoid(logits) >= 0.5).to(torch.int64)
     if was_training:
         model.train()
-    return preds
+    return predictions
 
 
 class ModelSolution(DNAExercise):

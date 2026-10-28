@@ -3,12 +3,12 @@
 Implement the TODOs below. UserSolution binds them to DNAExercise's abstract
 methods. Keep names and signatures unchanged; no reference code is imported.
 """
-from typing import Sequence
+from collections.abc import Sequence
+
 import torch
 from torch import nn
 
 from .exercise import DNAExercise
-
 
 BASE_TO_IDX = {"A": 0, "C": 1, "G": 2, "T": 3}
 

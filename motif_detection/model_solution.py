@@ -1,12 +1,11 @@
 """Reference solution for exercise 02: CNN motif detection on variable-length DNA."""
-from typing import Sequence
+from collections.abc import Sequence
 
 import torch
 from torch import nn
 from torch.utils.data import DataLoader, Dataset
 
 from .exercise import MotifExercise
-
 
 BASE_TO_IDX = {"A": 0, "C": 1, "G": 2, "T": 3}
 COMPLEMENT = {"A": "T", "C": "G", "G": "C", "T": "A", "N": "N"}

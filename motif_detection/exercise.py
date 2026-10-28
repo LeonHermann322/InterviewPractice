@@ -1,9 +1,9 @@
 """Exercise 02 contract and tests. Reference code is loaded only on request."""
+import random
+import unittest
 from abc import abstractmethod
 from collections.abc import Callable, Sequence
-import random
 from typing import ClassVar
-import unittest
 
 import torch
 from torch import nn

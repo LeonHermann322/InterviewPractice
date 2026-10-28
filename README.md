@@ -1,6 +1,7 @@
 # PyTorch Live Coding Interview Practice
 
 ## Files
+
 Shared files stay at the root; each exercise has its own Python package:
 
 ```text
@@ -30,6 +31,7 @@ InterviewPractice
 - Package `__init__.py` files do not import solutions.
 
 ## Setup
+
 Use Python 3.10+ in a virtual environment if possible:
 
 ```bash
@@ -39,6 +41,7 @@ python -m pip install -r requirements.txt
 ```
 
 ## Run the tests
+
 Run commands from the repository root, not from an individual exercise folder.
 
 List the available exercises:
@@ -90,12 +93,14 @@ and prediction behavior. Passing these tests is not a proof of biological useful
 generalization; the dataset is deliberately tiny and synthetic.
 
 ## Debugging in VS Code
+
 `.vscode/launch.json` has an "own solution" and a "model solution" configuration for
 each exercise. Pick one in the Run and Debug view, set breakpoints in that exercise's
 `solve_this.py` or `exercise.py`, and press F5. When adding an exercise, copy a pair of
 configurations and change the `--exercise` ID.
 
 ## Exercise 02: CNN motif detection (harder)
+
 Work in `motif_detection\solve_this.py`. Its contract and tests live in
 `motif_detection\exercise.py`; the reference implementation stays in
 `motif_detection\model_solution.py`.
@@ -114,7 +119,9 @@ python test.py --exercise 02 --compare
 Suggested time box: 35–45 minutes.
 
 ## Adding an exercise
+
 An exercise definition subclasses `Exercise` and owns:
+
 - `title` and `problem`: strings used by `--list` and `--describe`.
 - One or more `@abstractmethod` solution stubs, with signatures specific to
   the problem. A single-function exercise can simply define `solve`.
@@ -201,6 +208,7 @@ your code or moving it into a file containing reference code. You can also
 override methods directly in the subclass, as in the single-function example.
 
 ## Validating the framework
+
 Run the runner's regression tests without running the ML exercises:
 
 ```bash
@@ -213,6 +221,7 @@ metadata access without loading solutions, package import isolation, and
 fresh/nonempty test suites.
 
 ## Suggested interview rules
+
 - Give yourself 20 minutes to debug/implement the functions.
 - Avoid opening `model_solution.py` until you're finished.
 - Use the error messages and failing tests as feedback, just as you would in a coding interview.

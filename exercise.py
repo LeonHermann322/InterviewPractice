@@ -1,7 +1,7 @@
 """Common contract for interview exercises; contains no reference solutions."""
+import unittest
 from abc import ABC, abstractmethod
 from typing import ClassVar
-import unittest
 
 
 class Exercise(ABC):

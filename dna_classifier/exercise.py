@@ -1,8 +1,9 @@
 """Exercise 01 contract and tests. Reference code is loaded only on request."""
-from abc import abstractmethod
 import math
-from typing import ClassVar, Sequence
 import unittest
+from abc import abstractmethod
+from collections.abc import Sequence
+from typing import ClassVar
 
 import torch
 from torch import nn
@@ -146,15 +147,15 @@ Suggested time box: 20 minutes."""
             def test_predict_labels_shape_and_values(self):
                 X = solution.encode_sequences(solution.sequences)
                 model = solution.create_model(input_dim=X.shape[1], hidden_dim=16)
-                preds = solution.predict_labels(model, X)
-                self.assertEqual(tuple(preds.shape), (len(solution.sequences), 1))
-                self.assertTrue(set(preds.unique().tolist()).issubset({0, 1}))
+                predictions = solution.predict_labels(model, X)
+                self.assertEqual(tuple(predictions.shape), (len(solution.sequences), 1))
+                self.assertTrue(set(predictions.unique().tolist()).issubset({0, 1}))
 
             def test_predict_labels_does_not_build_grad_graph(self):
                 X = solution.encode_sequences(solution.sequences)
                 model = solution.create_model(input_dim=X.shape[1], hidden_dim=16)
-                preds = solution.predict_labels(model, X)
-                self.assertFalse(preds.requires_grad)
+                predictions = solution.predict_labels(model, X)
+                self.assertFalse(predictions.requires_grad)
 
         ExerciseTests.__name__ = f"ExerciseTests_{type(solution).__module__}"
         return unittest.defaultTestLoader.loadTestsFromTestCase(ExerciseTests)

@@ -1,15 +1,15 @@
 """Shared command-line runner and registry for abstract interview exercises."""
 import argparse
-from abc import abstractmethod
-from collections.abc import Sequence
-from contextlib import redirect_stderr, redirect_stdout
-from dataclasses import dataclass
 import importlib
 import io
 import sys
 import traceback
-from types import ModuleType
 import unittest
+from abc import abstractmethod
+from collections.abc import Sequence
+from contextlib import redirect_stderr, redirect_stdout
+from dataclasses import dataclass
+from types import ModuleType
 from unittest.mock import patch
 
 from dna_classifier.exercise import DNAExercise
@@ -27,7 +27,7 @@ class RegisteredExercise:
             implementation = self.definition.model_solution()
         elif solution == "own":
             module = importlib.import_module(self.own_module)
-            solution_class = getattr(module, "UserSolution")
+            solution_class = module.UserSolution
             if not isinstance(solution_class, type) or not issubclass(solution_class, self.definition):
                 raise TypeError(f"{self.own_module}.UserSolution must subclass {self.definition.__name__}")
             implementation = solution_class()
@@ -138,7 +138,7 @@ class FrameworkTests(unittest.TestCase):
         self.user_class = ExampleUser
         self.model_class = ExampleModel
         self.module = ModuleType("_example_user_solution")
-        setattr(self.module, "UserSolution", ExampleUser)
+        self.module.UserSolution = ExampleUser
         self.registration = RegisteredExercise(ExampleExercise, self.module.__name__)
 
     def run_main(self, args: list[str]) -> tuple[int, str]:
@@ -149,9 +149,8 @@ class FrameworkTests(unittest.TestCase):
 
     def test_definitions_and_missing_overrides_are_abstract(self):
         for definition in (Exercise, DNAExercise, MotifExercise, self.definition):
-            with self.subTest(definition=definition.__name__):
-                with self.assertRaises(TypeError):
-                    definition()
+            with self.subTest(definition=definition.__name__),self.assertRaises(TypeError):
+                definition()
         self.assertIsInstance(self.user_class(), self.definition)
 
     def test_user_and_reference_selection(self):
@@ -166,17 +165,16 @@ class FrameworkTests(unittest.TestCase):
             delattr(self.module, "UserSolution")
             with self.assertRaises(AttributeError):
                 self.registration.load_solution("own")
-            setattr(self.module, "UserSolution", object)
+            self.module.UserSolution = object
             with self.assertRaisesRegex(TypeError, "must subclass"):
                 self.registration.load_solution("own")
-            setattr(self.module, "UserSolution", self.definition)
+            self.module.UserSolution = self.definition
             with self.assertRaises(TypeError):
                 self.registration.load_solution("own")
 
     def test_wrong_reference_type_is_rejected(self):
-        with patch.object(self.definition, "model_solution", return_value=object()):
-            with self.assertRaisesRegex(TypeError, "must be an instance"):
-                self.registration.load_solution("model")
+        with patch.object(self.definition, "model_solution", return_value=object()),self.assertRaisesRegex(TypeError, "must be an instance"):
+            self.registration.load_solution("model")
 
     def test_new_registration_runs_without_runner_changes(self):
         with patch.dict(EXERCISES, {"03": self.registration}), \
@@ -240,8 +238,8 @@ class FrameworkTests(unittest.TestCase):
             self.assertIn(exercise.definition.problem, output)
 
     def test_package_import_isolation(self):
-        from pathlib import Path
         import subprocess
+        from pathlib import Path
 
         script = """
 import sys
@@ -274,7 +272,7 @@ for old_module in ("dna_exercise", "motif_exercise", "solve_this",
             with self.subTest(selection=selection):
                 result = subprocess.run(
                     [sys.executable, "-c", script, selection],
-                    cwd=Path(__file__).resolve().parent,
+                    check=False, cwd=Path(__file__).resolve().parent,
                     capture_output=True,
                     text=True,
                     timeout=60,

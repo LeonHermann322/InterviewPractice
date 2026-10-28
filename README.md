@@ -89,6 +89,12 @@ The tests cover encoding, input validation, model output shape, gradient flow, t
 and prediction behavior. Passing these tests is not a proof of biological usefulness or
 generalization; the dataset is deliberately tiny and synthetic.
 
+## Debugging in VS Code
+`.vscode/launch.json` has an "own solution" and a "model solution" configuration for
+each exercise. Pick one in the Run and Debug view, set breakpoints in that exercise's
+`solve_this.py` or `exercise.py`, and press F5. When adding an exercise, copy a pair of
+configurations and change the `--exercise` ID.
+
 ## Exercise 02: CNN motif detection (harder)
 Work in `motif_detection\solve_this.py`. Its contract and tests live in
 `motif_detection\exercise.py`; the reference implementation stays in

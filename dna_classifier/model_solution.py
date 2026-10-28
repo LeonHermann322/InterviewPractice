@@ -3,6 +3,8 @@ from typing import Sequence
 import torch
 from torch import nn
 
+from .exercise import DNAExercise
+
 
 BASE_TO_IDX = {"A": 0, "C": 1, "G": 2, "T": 3}
 
@@ -86,3 +88,13 @@ def predict_labels(model: nn.Module, X: torch.Tensor) -> torch.Tensor:
     if was_training:
         model.train()
     return preds
+
+
+class ModelSolution(DNAExercise):
+    """Reference implementation of the exercise's abstract stubs."""
+
+    encode_sequence = staticmethod(encode_sequence)
+    encode_sequences = staticmethod(encode_sequences)
+    create_model = staticmethod(DNAClassifier)
+    train_model = staticmethod(train_model)
+    predict_labels = staticmethod(predict_labels)

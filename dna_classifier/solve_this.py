@@ -1,11 +1,13 @@
 """Candidate implementation file.
 
-Implement the TODOs below. Do not change function/class names or signatures:
-the test runner imports these symbols directly.
+Implement the TODOs below. UserSolution binds them to DNAExercise's abstract
+methods. Keep names and signatures unchanged; no reference code is imported.
 """
 from typing import Sequence
 import torch
 from torch import nn
+
+from .exercise import DNAExercise
 
 
 BASE_TO_IDX = {"A": 0, "C": 1, "G": 2, "T": 3}
@@ -63,3 +65,13 @@ def train_model(
 def predict_labels(model: nn.Module, X: torch.Tensor) -> torch.Tensor:
     """Return binary predictions (0/1) with shape (N, 1), without gradients."""
     raise NotImplementedError("Implement predict_labels")
+
+
+class UserSolution(DNAExercise):
+    """Override the exercise's abstract stubs with the implementations above."""
+
+    encode_sequence = staticmethod(encode_sequence)
+    encode_sequences = staticmethod(encode_sequences)
+    create_model = staticmethod(DNAClassifier)
+    train_model = staticmethod(train_model)
+    predict_labels = staticmethod(predict_labels)

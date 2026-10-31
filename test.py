@@ -16,6 +16,7 @@ from dna_classifier.exercise import DNAExercise
 from exercise import Exercise
 from motif_detection.exercise import MotifExercise
 from pytorch_drills.exercise import PyTorchDrillsExercise
+from tensor_manipulation.exercise import TensorManipulationExercise
 
 
 @dataclass(frozen=True)
@@ -43,6 +44,7 @@ EXERCISES: dict[str, RegisteredExercise] = {
     "01": RegisteredExercise(DNAExercise, "dna_classifier.solve_this"),
     "02": RegisteredExercise(MotifExercise, "motif_detection.solve_this"),
     "03": RegisteredExercise(PyTorchDrillsExercise, "pytorch_drills.solve_this"),
+    "04": RegisteredExercise(TensorManipulationExercise, "tensor_manipulation.solve_this"),
 }
 
 

@@ -25,6 +25,11 @@ InterviewPractice
     |-- exercise.py
     |-- solve_this.py
     `-- model_solution.py
+`-- tensor_manipulation
+    |-- __init__.py
+    |-- exercise.py
+    |-- solve_this.py
+    `-- model_solution.py
 ```
 
 - Root `exercise.py`: abstract base class shared by every exercise.
@@ -137,6 +142,21 @@ python test.py --exercise 03 --compare
 ```
 
 Suggested time box: 20 minutes.
+
+## Exercise 04: Advanced tensor dimension operations
+
+Work in `tensor_manipulation\solve_this.py`. These vectorized tasks practice
+pairwise batched comparisons, cosine similarity, weighted pooling, masked
+softmax, attention-head reshape/permutation, gathering sequence endpoints,
+and masked reductions. The reference solution in
+`tensor_manipulation\model_solution.py` explains the tensor-shape steps.
+
+```bash
+python test.py --exercise 04 --solution own
+python test.py --exercise 04 --compare
+```
+
+Suggested time box: 30–40 minutes.
 
 ## Adding an exercise
 

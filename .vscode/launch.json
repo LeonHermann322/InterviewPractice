@@ -60,6 +60,26 @@
             "cwd": "${workspaceFolder}",
             "console": "integratedTerminal",
             "justMyCode": true
+        },
+        {
+            "name": "04 Tensor manipulation: own solution",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/test.py",
+            "args": ["--exercise", "04", "--solution", "own"],
+            "cwd": "${workspaceFolder}",
+            "console": "integratedTerminal",
+            "justMyCode": true
+        },
+        {
+            "name": "04 Tensor manipulation: model solution",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/test.py",
+            "args": ["--exercise", "04", "--solution", "model"],
+            "cwd": "${workspaceFolder}",
+            "console": "integratedTerminal",
+            "justMyCode": true
         }
     ]
 }

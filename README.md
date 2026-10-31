@@ -145,10 +145,13 @@ Suggested time box: 20 minutes.
 
 ## Exercise 04: Advanced tensor dimension operations
 
-Work in `tensor_manipulation\solve_this.py`. These vectorized tasks practice
-pairwise batched comparisons, cosine similarity, weighted pooling, masked
-softmax, attention-head reshape/permutation, gathering sequence endpoints,
-and masked reductions. The reference solution in
+Work in `tensor_manipulation\solve_this.py`. These eleven vectorized tasks add
+new operations beyond exercise 03: sliding windows, batched cosine similarity,
+weighted pooling, masked softmax, attention-head reshape/permutation, gathering
+sequence endpoints, image patchification, top-k feature selection, channel
+shuffling, and batched diagonals. There are no repeated squared-distance,
+masked-mean, attention-mask construction, or graph-padding tasks.
+The reference solution in
 `tensor_manipulation\model_solution.py` explains the tensor-shape steps.
 
 ```bash
@@ -156,7 +159,7 @@ python test.py --exercise 04 --solution own
 python test.py --exercise 04 --compare
 ```
 
-Suggested time box: 30–40 minutes.
+Suggested time box: 45–60 minutes.
 
 ## Adding an exercise
 

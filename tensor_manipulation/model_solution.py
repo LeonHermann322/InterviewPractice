@@ -4,15 +4,21 @@ import torch
 from .exercise import TensorManipulationExercise
 
 
-def pairwise_squared_distances(x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
-    """Compute each x-to-y squared distance without mixing batches.
+def sliding_windows(
+    x: torch.Tensor, window_size: int, step: int = 1,
+) -> torch.Tensor:
+    """Extract time windows using a strided tensor view rather than a Python loop.
 
-    The inputs are ``(B, N, D)`` and ``(B, M, D)``. Insert an item axis into
-    each tensor so broadcasting creates ``(B, N, M, D)`` differences. Square
-    each feature difference, then reduce over D to return ``(B, N, M)``.
+    1. Check that a window fits and the step is positive.
+    2. Unfold the time axis. PyTorch appends the within-window axis at the end,
+       producing (B, W, D, window_size), not the requested layout.
+    3. Move that final axis before features to obtain (B, W, window_size, D).
+       The result can share storage with x; overlapping windows must not be
+       modified in-place because they may refer to the same input entries.
     """
-    differences = x.unsqueeze(2) - y.unsqueeze(1)
-    return differences.square().sum(dim=-1)
+    if not 1 <= window_size <= x.shape[1] or step <= 0:
+        raise ValueError("window_size must fit the time axis and step must be positive")
+    return x.unfold(1, window_size, step).movedim(-1, -2)
 
 
 def pairwise_cosine_similarity(
@@ -101,28 +107,82 @@ def gather_last_valid(x: torch.Tensor, lengths: torch.Tensor) -> torch.Tensor:
     return x[batch_indices, time_indices]
 
 
-def masked_mean_pool(x: torch.Tensor, mask: torch.Tensor) -> torch.Tensor:
-    """Average valid timesteps independently for every sequence and feature.
+def patchify(x: torch.Tensor, patch_size: int) -> torch.Tensor:
+    """Separate spatial patch axes from local pixel axes, then flatten tokens.
 
-    Add a trailing singleton axis to the ``(B, T)`` mask so it broadcasts over
-    the D features. Sum masked values and valid-position counts along time.
-    Clamp counts to at least one before division: nonempty rows get their true
-    mean, while empty rows stay zero instead of producing NaNs.
+    1. Validate the patch size and exact divisibility of both image dimensions.
+    2. Split H and W into patch-grid and within-patch dimensions. The reshape
+       gives (B, C, grid_rows, local_rows, grid_cols, local_cols).
+    3. Permute to (B, grid_rows, grid_cols, C, local_rows, local_cols).
+       This makes the patch-grid axes adjacent and puts each token's features
+       in channel-first pixel order.
+    4. Flatten the grid into P and the remaining three axes into token features.
+       Reshape handles non-contiguous tensors, copying only when needed.
     """
-    expanded_mask = mask.unsqueeze(-1)
-    sums = (x * expanded_mask).sum(dim=1)
-    counts = expanded_mask.sum(dim=1).clamp_min(1)
-    return sums / counts
+    batch, channels, height, width = x.shape
+    if patch_size <= 0 or height % patch_size or width % patch_size:
+        raise ValueError("patch_size must be positive and divide both spatial dimensions")
+    rows, cols = height // patch_size, width // patch_size
+    patches = x.reshape(batch, channels, rows, patch_size, cols, patch_size)
+    patches = patches.permute(0, 2, 4, 1, 3, 5)
+    return patches.reshape(batch, rows * cols, channels * patch_size * patch_size)
+
+
+def topk_features(x: torch.Tensor, scores: torch.Tensor, k: int) -> torch.Tensor:
+    """Rank items, then gather their full feature vectors without copying indices.
+
+    1. Validate k and obtain the descending top-k item indices, shaped (B, k).
+    2. Add a singleton feature axis and expand to (B, k, D). Expansion reuses
+       the same item index for every feature without allocating repeated data.
+    3. Gather along x's item axis. Each output vector belongs to the ranked item
+       in that same batch row. Autograd sends gradients to selected x entries;
+       the discrete ranking itself is not differentiable with respect to scores.
+    """
+    if not 1 <= k <= x.shape[1]:
+        raise ValueError("k must be between 1 and the number of items")
+    indices = scores.topk(k, dim=1, sorted=True).indices
+    return x.gather(1, indices.unsqueeze(-1).expand(-1, -1, x.shape[2]))
+
+
+def channel_shuffle(x: torch.Tensor, groups: int) -> torch.Tensor:
+    """Interleave channel groups by changing axis order, not pixel values.
+
+    1. Validate the group count and divide C into groups and channels per group.
+    2. Reshape to (B, groups, channels_per_group, H, W).
+    3. Swap the two channel-related axes: the first channel of every group now
+       comes before the second channel of every group, and so on.
+    4. Merge the swapped axes back into C. Spatial axes remain untouched.
+       Reshape can materialize the reordered layout after the transpose.
+    """
+    batch, channels, height, width = x.shape
+    if groups <= 0 or channels % groups:
+        raise ValueError("groups must be positive and divide the channel count")
+    grouped = x.reshape(batch, groups, channels // groups, height, width)
+    return grouped.transpose(1, 2).reshape(batch, channels, height, width)
+
+
+def batched_diagonal(x: torch.Tensor, offset: int = 0) -> torch.Tensor:
+    """Extract matrix diagonals without flattening or iterating through batch axes.
+
+    Specify the last two axes as the matrix axes so all earlier dimensions
+    survive unchanged. PyTorch's diagonal operation appends one axis containing
+    the selected entries, with the requested offset and rectangular-matrix
+    bounds handled automatically. It returns a view, even for strided inputs.
+    """
+    return x.diagonal(offset=offset, dim1=-2, dim2=-1)
 
 
 class ModelSolution(TensorManipulationExercise):
     """Bind the walkthrough implementations to the shared exercise test suite."""
 
-    pairwise_squared_distances = staticmethod(pairwise_squared_distances)
+    sliding_windows = staticmethod(sliding_windows)
     pairwise_cosine_similarity = staticmethod(pairwise_cosine_similarity)
     weighted_pool = staticmethod(weighted_pool)
     masked_softmax = staticmethod(masked_softmax)
     merge_heads = staticmethod(merge_heads)
     split_heads = staticmethod(split_heads)
     gather_last_valid = staticmethod(gather_last_valid)
-    masked_mean_pool = staticmethod(masked_mean_pool)
+    patchify = staticmethod(patchify)
+    topk_features = staticmethod(topk_features)
+    channel_shuffle = staticmethod(channel_shuffle)
+    batched_diagonal = staticmethod(batched_diagonal)

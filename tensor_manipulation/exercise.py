@@ -9,12 +9,14 @@ from exercise import Exercise
 
 class TensorManipulationExercise(Exercise):
     title = "Advanced tensor dimension operations"
-    problem = """Implement eight vectorized PyTorch functions in
+    problem = """Implement eleven vectorized PyTorch functions in
 tensor_manipulation\\solve_this.py. Focus on broadcasting, reshaping,
 permuting, reductions, and batched matrix operations; avoid Python loops.
 
-1. Pairwise squared distances: x (B, N, D), y (B, M, D) -> (B, N, M).
-2. Pairwise cosine similarities for the same shapes. Zero vectors should
+1. Extract sliding windows: x (B, T, D) -> (B, W, window_size, D),
+   where W = 1 + (T - window_size) // step. No padding.
+2. Pairwise cosine similarities: x (B, N, D), y (B, M, D) -> (B, N, M).
+   Zero vectors should
    produce similarity 0; eps is a positive lower bound for norm denominators.
 3. Weighted batch pooling: values (B, S, D), weights (B, Q, S) -> (B, Q, D).
    Weights are used as supplied and are not normalized by the function.
@@ -26,16 +28,27 @@ permuting, reductions, and batched matrix operations; avoid Python loops.
    (B, T, H*D) -> (B, H, T, D). The feature width must divide by n_heads.
 7. Gather the last valid timestep from each sequence: x (B, T, D), lengths
    (B,) -> (B, D), where each length is between 1 and T.
-8. Compute a masked mean over time: x (B, T, D), mask (B, T) -> (B, D).
-   An item with no valid timesteps must produce a zero vector.
+8. Patchify images: x (B, C, H, W) -> (B, P, C*patch_size*patch_size).
+   Use non-overlapping square patches in row-major spatial order; flatten each
+   patch in channel, local-row, local-column order. H and W must divide evenly.
+9. Select features for the k highest scores per batch item:
+   x (B, N, D), scores (B, N) -> (B, k, D), in descending score order.
+10. Shuffle image channels by grouping, swapping group and within-group axes,
+    and merging back: (B, C, H, W) -> same shape.
+11. Extract diagonals from matrices with any number of leading batch axes.
+    x (..., R, C) -> (..., diagonal_length), including off-diagonal offsets.
 
-Preserve batch membership and return the specified shapes. Suggested time box:
-30-40 minutes."""
+Preserve input dtype/device and batch membership; do not mutate inputs.
+Support non-contiguous tensors. Positive window/step/patch/group parameters
+and valid top-k counts are required; invalid values raise ValueError.
+Suggested time box: 45-60 minutes."""
 
     @staticmethod
     @abstractmethod
-    def pairwise_squared_distances(x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
-        """Return batched squared distances with shape (B, N, M)."""
+    def sliding_windows(
+        x: torch.Tensor, window_size: int, step: int = 1,
+    ) -> torch.Tensor:
+        """Extract unpadded (B, windows, window_size, D) sequence windows."""
         raise NotImplementedError
 
     @staticmethod
@@ -80,8 +93,26 @@ Preserve batch membership and return the specified shapes. Suggested time box:
 
     @staticmethod
     @abstractmethod
-    def masked_mean_pool(x: torch.Tensor, mask: torch.Tensor) -> torch.Tensor:
-        """Return a time-masked mean of (B, T, D), using zeros for empty masks."""
+    def patchify(x: torch.Tensor, patch_size: int) -> torch.Tensor:
+        """Turn images into flattened, row-major, non-overlapping square patches."""
+        raise NotImplementedError
+
+    @staticmethod
+    @abstractmethod
+    def topk_features(x: torch.Tensor, scores: torch.Tensor, k: int) -> torch.Tensor:
+        """Gather feature vectors for each batch item's k highest-scoring entries."""
+        raise NotImplementedError
+
+    @staticmethod
+    @abstractmethod
+    def channel_shuffle(x: torch.Tensor, groups: int) -> torch.Tensor:
+        """Interleave groups of image channels without changing spatial positions."""
+        raise NotImplementedError
+
+    @staticmethod
+    @abstractmethod
+    def batched_diagonal(x: torch.Tensor, offset: int = 0) -> torch.Tensor:
+        """Extract a diagonal over the last two axes, preserving all leading axes."""
         raise NotImplementedError
 
     @classmethod
@@ -94,20 +125,29 @@ Preserve batch membership and return the specified shapes. Suggested time box:
         solution = self
 
         class Exercise04Tests(unittest.TestCase):
-            def test_pairwise_squared_distances(self):
-                x = torch.tensor([[[0.0, 0.0], [1.0, 1.0]]])
-                y = torch.tensor([[[1.0, 0.0], [2.0, 2.0], [-1.0, 0.0]]])
-                expected = torch.tensor([[[1.0, 8.0, 1.0], [1.0, 2.0, 5.0]]])
-                torch.testing.assert_close(solution.pairwise_squared_distances(x, y), expected)
+            def test_sliding_windows_values_order_and_step(self):
+                x = torch.arange(20).reshape(2, 5, 2)
+                for step in (1, 2):
+                    with self.subTest(step=step):
+                        expected = torch.stack(
+                            [x[:, start:start + 3] for start in range(0, 3, step)], dim=1,
+                        )
+                        torch.testing.assert_close(solution.sliding_windows(x, 3, step), expected)
 
-            def test_pairwise_operations_preserve_batch_dimension(self):
+            def test_sliding_windows_noncontiguous_and_full_length(self):
+                x = torch.arange(30).reshape(2, 3, 5).transpose(1, 2)
+                torch.testing.assert_close(solution.sliding_windows(x, 5), x.unsqueeze(1))
+
+            def test_sliding_windows_invalid_sizes(self):
+                for size, step in ((0, 1), (6, 1), (2, 0), (2, -1)):
+                    with self.subTest(size=size, step=step), self.assertRaises(ValueError):
+                        solution.sliding_windows(torch.zeros(2, 5, 3), size, step)
+
+            def test_cosine_similarity_preserves_batch_dimension(self):
                 x = torch.tensor([[[1.0, 0.0]], [[0.0, 1.0]]])
                 y = torch.tensor([[[1.0, 0.0], [0.0, 1.0]]] * 2)
-                expected_distances = torch.tensor([[[0.0, 2.0]], [[2.0, 0.0]]])
                 expected_cosine = torch.tensor([[[1.0, 0.0]], [[0.0, 1.0]]])
-                distances = solution.pairwise_squared_distances(x, y)
                 cosine = solution.pairwise_cosine_similarity(x, y)
-                torch.testing.assert_close(distances, expected_distances)
                 torch.testing.assert_close(cosine, expected_cosine)
 
             def test_cosine_similarity_zero_vectors(self):
@@ -175,14 +215,75 @@ Preserve batch membership and return the specified shapes. Suggested time box:
                 expected = torch.tensor([[1.0, 10.0], [6.0, 60.0]])
                 torch.testing.assert_close(solution.gather_last_valid(x, lengths), expected)
 
-            def test_masked_mean_pool_and_empty_sequence(self):
-                x = torch.tensor([
-                    [[1.0, 10.0], [3.0, 30.0], [100.0, 1000.0]],
-                    [[7.0, 70.0], [8.0, 80.0], [9.0, 90.0]],
-                ])
-                mask = torch.tensor([[True, True, False], [False, False, False]])
-                expected = torch.tensor([[2.0, 20.0], [0.0, 0.0]])
-                torch.testing.assert_close(solution.masked_mean_pool(x, mask), expected)
+            def test_patchify_patch_and_feature_order(self):
+                x = torch.arange(2 * 2 * 4 * 6).reshape(2, 2, 4, 6)
+                expected = torch.stack([
+                    x[:, :, row:row + 2, col:col + 2].reshape(2, -1)
+                    for row in (0, 2) for col in (0, 2, 4)
+                ], dim=1)
+                torch.testing.assert_close(solution.patchify(x, 2), expected)
+
+            def test_patchify_noncontiguous_and_unit_patches(self):
+                x = torch.arange(24).reshape(1, 2, 3, 4).transpose(-1, -2)
+                expected = x.permute(0, 2, 3, 1).reshape(1, 12, 2)
+                torch.testing.assert_close(solution.patchify(x, 1), expected)
+
+            def test_patchify_invalid_size(self):
+                for size in (0, -1, 3):
+                    with self.subTest(size=size), self.assertRaises(ValueError):
+                        solution.patchify(torch.zeros(1, 2, 4, 6), size)
+
+            def test_topk_features_batch_order_and_repeated_values(self):
+                x = torch.arange(24).reshape(2, 4, 3)
+                scores = torch.tensor([[2., 4., 1., 3.], [4., 1., 3., 2.]])
+                expected = torch.stack((x[0, [1, 3]], x[1, [0, 2]]))
+                torch.testing.assert_close(solution.topk_features(x, scores, 2), expected)
+
+            def test_topk_features_noncontiguous_and_gradients(self):
+                base = torch.arange(24, dtype=torch.float64).reshape(2, 3, 4)
+                base.requires_grad_()
+                x = base.transpose(1, 2)
+                scores = torch.tensor([[2., 4., 1., 3.], [4., 1., 3., 2.]])
+                actual = solution.topk_features(x, scores, 1)
+                torch.testing.assert_close(actual, torch.stack((x[0, 1], x[1, 0])).unsqueeze(1))
+                actual.sum().backward()
+                expected_grad = torch.zeros_like(base)
+                expected_grad[0, :, 1] = 1
+                expected_grad[1, :, 0] = 1
+                torch.testing.assert_close(base.grad, expected_grad)
+
+            def test_topk_features_invalid_k(self):
+                for k in (0, -1, 5):
+                    with self.subTest(k=k), self.assertRaises(ValueError):
+                        solution.topk_features(torch.zeros(2, 4, 3), torch.zeros(2, 4), k)
+
+            def test_channel_shuffle_order(self):
+                x = torch.arange(48).reshape(2, 6, 2, 2)
+                torch.testing.assert_close(solution.channel_shuffle(x, 2), x[:, [0, 3, 1, 4, 2, 5]])
+                torch.testing.assert_close(solution.channel_shuffle(x, 3), x[:, [0, 2, 4, 1, 3, 5]])
+
+            def test_channel_shuffle_identity_and_noncontiguous(self):
+                x = torch.arange(48).reshape(2, 6, 2, 2).transpose(-1, -2)
+                for groups in (1, 6):
+                    with self.subTest(groups=groups):
+                        torch.testing.assert_close(solution.channel_shuffle(x, groups), x)
+
+            def test_channel_shuffle_invalid_groups(self):
+                for groups in (0, -1, 4):
+                    with self.subTest(groups=groups), self.assertRaises(ValueError):
+                        solution.channel_shuffle(torch.zeros(2, 6, 2, 2), groups)
+
+            def test_batched_diagonal_offsets_and_leading_axes(self):
+                x = torch.arange(2 * 3 * 4 * 5).reshape(2, 3, 4, 5)
+                for offset in (-2, 0, 2, 6):
+                    with self.subTest(offset=offset):
+                        rows = list(range(max(0, -offset), min(4, 5 - offset)))
+                        expected = x[..., rows, [row + offset for row in rows]]
+                        torch.testing.assert_close(solution.batched_diagonal(x, offset), expected)
+
+            def test_batched_diagonal_noncontiguous_and_no_batch(self):
+                x = torch.arange(12).reshape(3, 4).transpose(0, 1)
+                torch.testing.assert_close(solution.batched_diagonal(x), torch.tensor([0, 5, 10]))
 
         Exercise04Tests.__name__ = f"Exercise04Tests_{type(solution).__module__}"
         return unittest.defaultTestLoader.loadTestsFromTestCase(Exercise04Tests)

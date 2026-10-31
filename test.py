@@ -15,6 +15,7 @@ from unittest.mock import patch
 from dna_classifier.exercise import DNAExercise
 from exercise import Exercise
 from motif_detection.exercise import MotifExercise
+from pytorch_drills.exercise import PyTorchDrillsExercise
 
 
 @dataclass(frozen=True)
@@ -41,6 +42,7 @@ class RegisteredExercise:
 EXERCISES: dict[str, RegisteredExercise] = {
     "01": RegisteredExercise(DNAExercise, "dna_classifier.solve_this"),
     "02": RegisteredExercise(MotifExercise, "motif_detection.solve_this"),
+    "03": RegisteredExercise(PyTorchDrillsExercise, "pytorch_drills.solve_this"),
 }
 
 

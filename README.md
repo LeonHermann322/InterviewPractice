@@ -15,7 +15,12 @@ InterviewPractice
 |   |-- exercise.py
 |   |-- solve_this.py
 |   `-- model_solution.py
-`-- motif_detection
+|-- motif_detection
+|   |-- __init__.py
+|   |-- exercise.py
+|   |-- solve_this.py
+|   `-- model_solution.py
+`-- pytorch_drills
     |-- __init__.py
     |-- exercise.py
     |-- solve_this.py
@@ -117,6 +122,21 @@ python test.py --exercise 02 --compare
 ```
 
 Suggested time box: 35–45 minutes.
+
+## Exercise 03: PyTorch tensor and vectorization drills
+
+Work in `pytorch_drills\solve_this.py`. The nine tasks cover broadcasting,
+boolean masking, row-wise normalization, pairwise distances, attention masks,
+graph aggregation, and padding variable-size graph tensors. Implement the
+functions without Python loops where specified; the reference solution is
+available separately in `pytorch_drills\model_solution.py`.
+
+```bash
+python test.py --exercise 03 --solution own
+python test.py --exercise 03 --compare
+```
+
+Suggested time box: 20 minutes.
 
 ## Adding an exercise
 

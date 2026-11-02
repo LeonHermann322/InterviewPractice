@@ -17,6 +17,7 @@ from exercise import Exercise
 from motif_detection.exercise import MotifExercise
 from pytorch_drills.exercise import PyTorchDrillsExercise
 from tensor_manipulation.exercise import TensorManipulationExercise
+from wine_cv.exercise import WineCVExercise
 
 
 @dataclass(frozen=True)
@@ -45,6 +46,7 @@ EXERCISES: dict[str, RegisteredExercise] = {
     "02": RegisteredExercise(MotifExercise, "motif_detection.solve_this"),
     "03": RegisteredExercise(PyTorchDrillsExercise, "pytorch_drills.solve_this"),
     "04": RegisteredExercise(TensorManipulationExercise, "tensor_manipulation.solve_this"),
+    "05": RegisteredExercise(WineCVExercise, "wine_cv.solve_this"),
 }
 
 

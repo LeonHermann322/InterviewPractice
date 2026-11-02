@@ -20,16 +20,23 @@ InterviewPractice
 |   |-- exercise.py
 |   |-- solve_this.py
 |   `-- model_solution.py
-`-- pytorch_drills
+|-- pytorch_drills
+|   |-- __init__.py
+|   |-- exercise.py
+|   |-- solve_this.py
+|   `-- model_solution.py
+|-- tensor_manipulation
+|   |-- __init__.py
+|   |-- exercise.py
+|   |-- solve_this.py
+|   `-- model_solution.py
+`-- wine_cv
     |-- __init__.py
     |-- exercise.py
     |-- solve_this.py
-    `-- model_solution.py
-`-- tensor_manipulation
-    |-- __init__.py
-    |-- exercise.py
-    |-- solve_this.py
-    `-- model_solution.py
+    |-- model_solution.py
+    |-- support.py
+    `-- run.py
 ```
 
 - Root `exercise.py`: abstract base class shared by every exercise.
@@ -100,7 +107,8 @@ comparison. Empty test suites are rejected.
 The scaffold is expected to fail until you implement it. The reference solution should pass.
 The tests cover encoding, input validation, model output shape, gradient flow, training,
 and prediction behavior. Passing these tests is not a proof of biological usefulness or
-generalization; the dataset is deliberately tiny and synthetic.
+generalization. Exercises 01-02 use deliberately tiny synthetic datasets;
+exercise 05 uses a small real dataset and a separate held-out test set.
 
 ## Debugging in VS Code
 
@@ -160,6 +168,79 @@ python test.py --exercise 04 --compare
 ```
 
 Suggested time box: 45–60 minutes.
+
+## Exercise 05: Real-data training and k-fold cross-validation
+
+Work in `wine_cv\solve_this.py`. Predict a wine's cultivar from chemical
+measurements using the [UCI Wine dataset](https://archive.ics.uci.edu/dataset/109/wine)
+([sklearn loader](https://scikit-learn.org/stable/modules/generated/sklearn.datasets.load_wine.html)):
+178 samples, 13 numeric features, three classes, no missing values. The dataset
+is bundled with scikit-learn, so no download, account, or external files are
+needed at runtime. Install the updated `requirements.txt` first.
+
+The supplied model is `Linear(13, 32) -> ReLU -> Linear(32, 3)`:
+**547 parameters**, float32 logits, integer labels, and cross-entropy loss.
+Weights alone are about 2.2 KB; weights, gradients and AdamW moment tensors
+total about 8.8 KB, excluding activations/framework/CUDA overhead. This is
+comfortably below your RTX 5080's 16 GB budget, but too small to benefit from
+that GPU. CPU is the default and recommended starting point.
+
+Unlike earlier exercises, you do **not** implement encoding, tensor drills,
+a model architecture, a Dataset, a batch loop, or a metric from scratch.
+Those are supplied in `wine_cv\support.py`. The four candidate tasks focus on:
+
+1. Fold-local feature standardization, with no validation leakage.
+2. Fresh model/AdamW setup per fold, reproducible shuffling, early stopping,
+   independent checkpoints, and restoring the best epoch.
+3. Stratified k-fold orchestration and correctly ordered out-of-fold predictions.
+4. Selecting hyperparameters by mean validation cross entropy, not test accuracy.
+
+```powershell
+python test.py --exercise 05 --describe
+python test.py --exercise 05 --solution own
+python test.py --exercise 05 --solution model
+
+# Full real-data experiment, once you have implemented the tasks:
+python -m wine_cv.run --solution own
+# Separate reference implementation:
+python -m wine_cv.run --solution model
+# Optional, with a CUDA-enabled PyTorch build compatible with your GPU:
+python -m wine_cv.run --solution own --device cuda
+```
+
+The experiment reserves a stratified **20% test set (36 samples)** before
+tuning. On the other **142 samples**, it runs **5-fold CV** over
+`lr = {0.001, 0.01}` and `weight_decay = {0, 0.01}`: **20 independent fits**,
+each capped at 100 epochs with patience 12. All trials reuse the same folds
+and per-fold seeds. The default console report shows per-trial fold tables,
+mean and population standard deviation of fold losses, OOF accuracy, a
+comparison table marking the selected configuration, and a separate final
+test summary with percentage accuracy and the number of correct predictions.
+Losses are displayed to six decimals; selection still uses full precision.
+For machine-readable output, use `--output json` to retain the original
+JSON Lines format (four trial records followed by one final test record):
+
+```powershell
+python -m wine_cv.run --solution model --output json
+```
+
+After selection, a fresh model and scaler are fitted on all development data.
+The refit uses the integer median of the winning trial's best epochs, not
+test-driven early stopping. The test set is evaluated **once**, at the end.
+CV results used for early stopping and hyperparameter selection are optimistic;
+they are not an unbiased final score. Do not iterate on the test result.
+Fold standard deviation is descriptive, not a confidence interval. With only
+36 test examples, one changed prediction moves accuracy by about 2.8 points.
+This is a training-protocol exercise, not evidence that an MLP beats simpler
+classifiers or is suitable for production.
+
+For a quick pipeline smoke test, add `--folds 3 --epochs 5 --patience 2`.
+The default seed is 42; `--seed` changes the held-out split and fold seeds.
+The unit tests are offline/CPU and check leakage, patience resets, checkpoint
+aliasing/restoration, fresh optimizers, OOF ordering, deterministic folds, and
+learning on the real development data. They never score the final test set.
+
+Suggested time box: 45-60 minutes. Discussion prompts are in `--describe`.
 
 ## Adding an exercise
 

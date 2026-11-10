@@ -1,4 +1,49 @@
-"""Reference answers; keep closed during timed practice."""
+"""Reference answers; keep closed during timed practice.
+
+What should a loss function satisfy?
+-----------------------------------
+There is no universal checklist for every learning algorithm. For ordinary
+supervised learning by gradient-based minimization, check these properties:
+
+1. Alignment with the task. Lower loss should reward the desired predictions,
+   not an unintended shortcut. For this pointwise regression exercise, zero
+   residual should minimize the loss. With noisy targets, MSE instead estimates
+   the conditional mean; it cannot generally make every residual zero.
+2. A meaningful lower bound on the allowed prediction domain. An objective
+   that can decrease forever by sending predictions to infinity is ill-posed
+   as a standalone minimization problem. Constraints or regularization may
+   change that conclusion; assess the complete objective and feasible domain.
+3. Well-defined, numerically stable values on valid inputs. Check domains of
+   logs/divisions, finite outputs and gradients, and dtype/range compatibility.
+   Even MSE can overflow for extreme finite inputs.
+4. A usable optimization signal. For ordinary backpropagation, preserve the
+   computation graph and provide useful derivatives or supported subgradients.
+   Smoothness everywhere is not necessary (MAE has a kink at zero), but
+   rounding, detaching, or saturated gradients can prevent useful learning.
+   Other optimization methods need not require differentiability.
+5. Correct inputs and reduction. Match the loss to the output representation
+   (for example, BCEWithLogitsLoss expects logits), align prediction/target
+   shapes, and reduce the intended examples to a scalar for loss.backward().
+   Vector losses are also valid, but need reduction or an explicit upstream
+   gradient. Square residuals before averaging so opposite errors cannot cancel.
+
+Not universal requirements:
+- Convexity: useful, but not necessary. A loss convex in predictions can still
+  be non-convex in neural-network parameters.
+- Nonnegativity or a minimum of exactly zero: convenient conventions, not
+  necessities. Adding a constant changes neither gradients nor minimizers.
+- Symmetry, uniqueness of the minimum, or unlimited growth with error:
+  task-dependent choices. Asymmetric and bounded robust losses can be valid,
+  although bounded losses may offer weak gradients for large residuals.
+
+Why the supplied losses fail (r = target - prediction):
+- mean(r) is affine, hence convex, but unbounded below as predictions increase.
+- -mean(r**2) rewards larger errors and is unbounded below.
+- mean(r**3) is non-convex over real residuals and unbounded below.
+All three are unsuitable here because of what minimization rewards, not
+merely because of curvature. Boundedness alone is also insufficient:
+(r**2 - 1)**2 is nonnegative but rewards residuals of +/-1 instead of zero.
+"""
 import torch
 from torch import nn
 
@@ -9,6 +54,11 @@ from .support import LOSS_CASES
 def regression_loss(
     prediction: torch.Tensor, target: torch.Tensor, case: str,
 ) -> torch.Tensor:
+    """MSE is nonnegative, minimized at matching targets, and differentiable.
+
+    With N elements its prediction gradient is 2 * (prediction - target) / N.
+    All case names use the same repair; same-shaped inputs avoid broadcasting.
+    """
     if case not in LOSS_CASES:
         raise ValueError(f"Unknown loss case: {case}")
     return (prediction - target).square().mean()

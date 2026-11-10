@@ -11,17 +11,13 @@ from .exercise import GeneDebuggingExercise
 
 
 def regression_loss(
-    prediction: torch.Tensor, target: torch.Tensor, case: str,
+    prediction: torch.Tensor, target: torch.Tensor,
 ) -> torch.Tensor:
     """Inputs have identical shapes; return a scalar regression objective."""
     residual = target - prediction
-    if case == "signed":
-        return residual.mean()
-    if case == "negative_square":
-        return -residual.square().mean()
-    if case == "cubic":
-        return residual.pow(3).mean()
-    raise ValueError(f"Unknown loss case: {case}")
+    return residual.mean()
+    # return -residual.square().mean()
+    # return residual.pow(3).mean()
 
 
 def train_model(
@@ -36,7 +32,7 @@ def train_model(
     losses = []
     for _ in range(epochs):
         prediction = model(x)
-        loss = regression_loss(prediction, target, case)
+        loss = regression_loss(prediction, target)
         loss.backward()
         optimizer.step()
         losses.append(loss.item())

@@ -48,25 +48,21 @@ import torch
 from torch import nn
 
 from .exercise import GeneDebuggingExercise
-from .support import LOSS_CASES
 
 
 def regression_loss(
-    prediction: torch.Tensor, target: torch.Tensor, case: str,
+    prediction: torch.Tensor, target: torch.Tensor,
 ) -> torch.Tensor:
     """MSE is nonnegative, minimized at matching targets, and differentiable.
 
     With N elements its prediction gradient is 2 * (prediction - target) / N.
-    All case names use the same repair; same-shaped inputs avoid broadcasting.
+    Same-shaped inputs avoid broadcasting.
     """
-    if case not in LOSS_CASES:
-        raise ValueError(f"Unknown loss case: {case}")
     return (prediction - target).square().mean()
 
 
 def train_model(
-    model: nn.Module, x: torch.Tensor, target: torch.Tensor,
-    case: str, epochs: int = 80, lr: float = 0.1,
+    model: nn.Module, x: torch.Tensor, target: torch.Tensor, epochs: int = 80, lr: float = 0.1,
 ) -> list[float]:
     optimizer = torch.optim.SGD(model.parameters(), lr=lr)
     model.train()
@@ -75,7 +71,7 @@ def train_model(
     for _ in range(epochs):
         optimizer.zero_grad()
         prediction = model(x)
-        loss = regression_loss(prediction, target, case)
+        loss = regression_loss(prediction, target)
         loss.backward()
         optimizer.step()
         losses.append(loss.item())

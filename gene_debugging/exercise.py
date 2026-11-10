@@ -7,7 +7,7 @@ import torch
 from torch import nn
 
 from exercise import Exercise
-from .support import LOSS_CASES, SuppliedRegressor, encode_sequences, regression_data
+from .support import SuppliedRegressor, encode_sequences, regression_data
 
 
 class GeneDebuggingExercise(Exercise):
@@ -15,7 +15,7 @@ class GeneDebuggingExercise(Exercise):
     problem = """Work in gene_debugging\\solve_this.py. Documentation is allowed;
 do not use AI assistance or open model_solution.py during a timed attempt.
 
-Pick ONE loss case and ONE module per mock: 20 minutes debugging, then
+Uncomment ONE faulty loss formula and pick ONE module per mock: 20 minutes debugging, then
 15 minutes implementing. Move on at the time limit, even if part 1 is unfinished.
 
 Part 1: DNA strings are encoded as float32 (batch, 4, length), A/C/G/T order.
@@ -26,7 +26,9 @@ Three alternative broken objectives use r = target - prediction:
   signed: mean(r); negative_square: -mean(r**2); cubic: mean(r**3).
 The signed objective is affine (convex), but unbounded below. The other two
 are non-convex and also unbounded below. Non-convexity alone is not the bug.
-Repair each to mean squared error without abs/clamping/detaching predictions.
+Keep only one return statement active in regression_loss. Repair that loss to
+mean squared error without abs/clamping/detaching predictions. There is no
+case argument; the same loss and training tests apply to every attempt.
 train_model must use fresh full-batch SGD, enter training mode, align target
 (batch,) or (batch, 1) to predictions, clear gradients each epoch, and return
 one pre-update Python float loss per epoch. No updates for zero epochs.
@@ -42,20 +44,19 @@ Part 2 options (layer names are unrestricted, parameters must be registered):
 All modules preserve batch dimension for batch size 1 and support autograd.
 DNA inputs are nonempty equal-length uppercase A/C/G/T strings; supplied
 encoding rejects invalid inputs. Motif input length >= kernel_size.
-Use README.md inside the folder for isolated case tests and Colab cells."""
+Use README.md inside the folder for isolated task tests and Colab cells."""
 
     @staticmethod
     @abstractmethod
     def regression_loss(
-        prediction: torch.Tensor, target: torch.Tensor, case: str,
+        prediction: torch.Tensor, target: torch.Tensor,
     ) -> torch.Tensor:
         raise NotImplementedError
 
     @staticmethod
     @abstractmethod
     def train_model(
-        model: nn.Module, x: torch.Tensor, target: torch.Tensor,
-        case: str, epochs: int = 80, lr: float = 0.1,
+        model: nn.Module, x: torch.Tensor, target: torch.Tensor, epochs: int = 80, lr: float = 0.1,
     ) -> list[float]:
         raise NotImplementedError
 
@@ -90,32 +91,19 @@ Use README.md inside the folder for isolated case tests and Colab cells."""
             def tearDown(self):
                 torch.random.set_rng_state(self.random_state)
 
-            def check_loss(self, case):
+            def test_regression_loss_values_and_gradients(self):
                 for values in ([1.0, -2.0, 4.0], [100.0, -100.0, 0.0]):
                     prediction = torch.tensor(values, requires_grad=True)
                     target = torch.tensor([0.0, 1.0, 2.0])
-                    loss = solution.regression_loss(prediction, target, case)
+                    loss = solution.regression_loss(prediction, target)
                     self.assertEqual(loss.ndim, 0)
                     torch.testing.assert_close(loss, (prediction - target).square().mean())
                     loss.backward()
                     torch.testing.assert_close(prediction.grad, 2 * (prediction.detach() - target) / 3)
                 target = torch.tensor([[0.2], [0.8]])
                 torch.testing.assert_close(
-                    solution.regression_loss(target, target, case), torch.tensor(0.0),
+                    solution.regression_loss(target, target), torch.tensor(0.0),
                 )
-
-            def test_loss_signed(self):
-                self.check_loss("signed")
-
-            def test_loss_negative_square(self):
-                self.check_loss("negative_square")
-
-            def test_loss_cubic(self):
-                self.check_loss("cubic")
-
-            def test_loss_unknown_case(self):
-                with self.assertRaises(ValueError):
-                    solution.regression_loss(torch.zeros(1), torch.zeros(1), "unknown")
 
             def test_encoding_strings_and_validation(self):
                 expected = torch.eye(4).unsqueeze(0)
@@ -126,51 +114,47 @@ Use README.md inside the folder for isolated case tests and Colab cells."""
 
             def test_training_matches_two_sgd_steps(self):
                 x, target = regression_data()
-                for case in LOSS_CASES:
-                    for column in (False, True):
-                        with self.subTest(case=case, column=column):
-                            model = SuppliedRegressor()
-                            expected = SuppliedRegressor()
-                            expected.load_state_dict(model.state_dict())
-                            expected_losses = []
-                            optimizer = torch.optim.SGD(expected.parameters(), lr=0.1)
-                            for _ in range(2):
-                                optimizer.zero_grad()
-                                loss = (expected(x) - target[:, None]).square().mean()
-                                expected_losses.append(loss.item())
-                                loss.backward()
-                                optimizer.step()
-                            model.eval()
-                            # Existing gradients must not contaminate the first step.
-                            for parameter in model.parameters():
-                                parameter.grad = torch.ones_like(parameter)
-                            actual = solution.train_model(
-                                model, x, target[:, None] if column else target,
-                                case, epochs=2, lr=0.1,
-                            )
-                            self.assertTrue(model.training)
-                            self.assertEqual(len(actual), 2)
-                            self.assertTrue(all(isinstance(value, float) for value in actual))
-                            torch.testing.assert_close(torch.tensor(actual), torch.tensor(expected_losses))
-                            for got, want in zip(model.parameters(), expected.parameters()):
-                                torch.testing.assert_close(got, want)
+                for column in (False, True):
+                    with self.subTest(column=column):
+                        model = SuppliedRegressor()
+                        expected = SuppliedRegressor()
+                        expected.load_state_dict(model.state_dict())
+                        expected_losses = []
+                        optimizer = torch.optim.SGD(expected.parameters(), lr=0.1)
+                        for _ in range(2):
+                            optimizer.zero_grad()
+                            loss = (expected(x) - target[:, None]).square().mean()
+                            expected_losses.append(loss.item())
+                            loss.backward()
+                            optimizer.step()
+                        model.eval()
+                        # Existing gradients must not contaminate the first step.
+                        for parameter in model.parameters():
+                            parameter.grad = torch.ones_like(parameter)
+                        actual = solution.train_model(
+                            model, x, target[:, None] if column else target, epochs=2, lr=0.1,
+                        )
+                        self.assertTrue(model.training)
+                        self.assertEqual(len(actual), 2)
+                        self.assertTrue(all(isinstance(value, float) for value in actual))
+                        torch.testing.assert_close(torch.tensor(actual), torch.tensor(expected_losses))
+                        for got, want in zip(model.parameters(), expected.parameters()):
+                            torch.testing.assert_close(got, want)
 
             def test_training_learns_gc_and_zero_epochs_does_not_update(self):
                 x, target = regression_data()
-                for case in LOSS_CASES:
-                    with self.subTest(case=case):
-                        model = SuppliedRegressor()
-                        before = [p.detach().clone() for p in model.parameters()]
-                        self.assertEqual(solution.train_model(model, x, target, case, epochs=0), [])
-                        for got, want in zip(model.parameters(), before):
-                            torch.testing.assert_close(got, want)
-                        losses = solution.train_model(model, x, target, case, epochs=200)
-                        self.assertEqual(len(losses), 200)
-                        self.assertTrue(all(math.isfinite(value) for value in losses))
-                        self.assertLess(losses[-1], losses[0])
-                        with torch.no_grad():
-                            mse = (model(x).flatten() - target).square().mean().item()
-                        self.assertLess(mse, 0.005)
+                model = SuppliedRegressor()
+                before = [p.detach().clone() for p in model.parameters()]
+                self.assertEqual(solution.train_model(model, x, target, epochs=0), [])
+                for got, want in zip(model.parameters(), before):
+                    torch.testing.assert_close(got, want)
+                losses = solution.train_model(model, x, target, epochs=200)
+                self.assertEqual(len(losses), 200)
+                self.assertTrue(all(math.isfinite(value) for value in losses))
+                self.assertLess(losses[-1], losses[0])
+                with torch.no_grad():
+                    mse = (model(x).flatten() - target).square().mean().item()
+                self.assertLess(mse, 0.005)
 
             def check_gradients(self, model, x):
                 model(x).sum().backward()

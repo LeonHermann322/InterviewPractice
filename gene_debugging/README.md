@@ -35,7 +35,9 @@ Non-convexity alone is not a defect: many useful neural objectives are
 non-convex in model parameters. Even a convex loss in predictions may yield
 a non-convex optimization problem after composition with a neural network.
 
-For these exercises, repair each variant to **mean squared error**. MSE is
+In `regression_loss`, comment out the current return and uncomment exactly
+one faulty formula for an attempt. There is no case argument or case-specific
+test suite. Repair the active formula to **mean squared error** once. MSE is
 nonnegative and minimized when predictions equal targets. Merely clamping
 the loss, taking its absolute value after reduction, lowering the learning
 rate, or detaching predictions does not meet the contract.
@@ -59,15 +61,15 @@ model = SuppliedRegressor()
 print("shapes:", x.shape, target.shape, model(x).shape)
 with torch.no_grad():
     print("MSE before:", (model(x).flatten() - target).square().mean().item())
-losses = candidate.train_model(model, x, target, "signed", epochs=20, lr=0.1)
+losses = candidate.train_model(model, x, target, epochs=20, lr=0.1)
 print("objective first/last:", losses[0], losses[-1])
 with torch.no_grad():
     print("MSE after:", (model(x).flatten() - target).square().mean().item())
     print("predictions:", model(x).flatten())
 ```
 
-Change `"signed"` to either other case and create a **fresh** model each
-time. Exploding or non-finite losses are evidence to investigate, not a
+For another attempt, uncomment a different formula and create a **fresh**
+model. Exploding or non-finite losses are evidence to investigate, not a
 reason to suppress errors. After fixing the loss, repeat with targets of
 shape `(batch,)` and `(batch, 1)`.
 
@@ -116,16 +118,14 @@ import unittest
 from gene_debugging.solve_this import UserSolution
 
 selected = {
-    "test_loss_signed",
+    "test_regression_loss_values_and_gradients",
     "test_training_matches_two_sgd_steps",
     "test_training_learns_gc_and_zero_epochs_does_not_update",
     "test_module_gc_values_shapes_and_gradients",
 }
-# Swap test_loss_signed for test_loss_negative_square or test_loss_cubic.
 # Swap the module test for test_module_motif_matches_spec_and_gradients or
 # test_module_residual_formula_shapes_and_gradients.
-# Training tests cover all variants: finish all three loss repairs first,
-# or omit the two training tests while isolating a single loss/module.
+# Loss and training tests use only the currently active loss formula.
 suite = unittest.TestSuite(
     test for test in UserSolution().build_suite()
     if test.id().rsplit(".", 1)[-1] in selected

@@ -1,7 +1,7 @@
 """Candidate workspace. Part 1 runs, but contains intentional bugs.
 
-Repair every loss variant to mean squared error and debug train_model.
-For a timed mock, select one loss variant and one part-2 module.
+For a timed mock, uncomment one faulty loss formula and select one part-2
+module. Repair the active loss to mean squared error and debug train_model.
 Do not open model_solution.py until the mock is finished.
 """
 import torch
@@ -22,7 +22,7 @@ def regression_loss(
 
 def train_model(
     model: nn.Module, x: torch.Tensor, target: torch.Tensor,
-    case: str, epochs: int = 80, lr: float = 0.1,
+    epochs: int = 80, lr: float = 0.1,
 ) -> list[float]:
     """Full-batch SGD; target is (batch,) or (batch, 1), model output (batch, 1).
 
@@ -67,7 +67,7 @@ class MotifClassifier(nn.Module):
 
 
 class ResidualBlock(nn.Module):
-    """Return x + Linear(hidden_dim, features)(ReLU(Linear(features, hidden_dim)(x))).
+    """Linear(features, hidden_dim), ReLU, Linear(hidden_dim, features), add input x.
 
     Use biases in both layers and no activation after the addition.
     Support (batch, features) and (batch, length, features).

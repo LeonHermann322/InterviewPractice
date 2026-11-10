@@ -6,7 +6,6 @@ from torch import nn
 from torch.nn import functional as F
 
 
-LOSS_CASES = ("signed", "negative_square", "cubic")
 SEQUENCES = ("AAAA", "AAAT", "AACC", "ACGT", "CCCG", "GCGC", "TTTT", "GGTT")
 
 

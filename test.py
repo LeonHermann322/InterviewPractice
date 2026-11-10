@@ -14,6 +14,7 @@ from unittest.mock import patch
 
 from dna_classifier.exercise import DNAExercise
 from exercise import Exercise
+from gene_debugging.exercise import GeneDebuggingExercise
 from motif_detection.exercise import MotifExercise
 from pytorch_drills.exercise import PyTorchDrillsExercise
 from tensor_manipulation.exercise import TensorManipulationExercise
@@ -47,6 +48,7 @@ EXERCISES: dict[str, RegisteredExercise] = {
     "03": RegisteredExercise(PyTorchDrillsExercise, "pytorch_drills.solve_this"),
     "04": RegisteredExercise(TensorManipulationExercise, "tensor_manipulation.solve_this"),
     "05": RegisteredExercise(WineCVExercise, "wine_cv.solve_this"),
+    "06": RegisteredExercise(GeneDebuggingExercise, "gene_debugging.solve_this"),
 }
 
 

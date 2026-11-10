@@ -25,6 +25,13 @@ InterviewPractice
 |   |-- exercise.py
 |   |-- solve_this.py
 |   `-- model_solution.py
+|-- gene_debugging
+|   |-- __init__.py
+|   |-- exercise.py
+|   |-- support.py
+|   |-- solve_this.py
+|   |-- model_solution.py
+|   `-- README.md
 |-- tensor_manipulation
 |   |-- __init__.py
 |   |-- exercise.py
@@ -241,6 +248,29 @@ aliasing/restoration, fresh optimizers, OOF ordering, deterministic folds, and
 learning on the real development data. They never score the final test set.
 
 Suggested time box: 45-60 minutes. Discussion prompts are in `--describe`.
+
+## Exercise 06: Gene debugging and nn.Module mini-interviews
+
+Work in [gene_debugging/solve_this.py](gene_debugging/solve_this.py).
+Pick one of three broken regression losses (signed residual, negative
+squared error, cubic residual) and one of three small modules (GC regressor,
+motif CNN, residual block). Debug a supplied DNA-string training setup,
+then switch to implementation at the time limit. The signed loss is
+convex but unbounded below; the other two are non-convex and unbounded
+below. The distinction is part of the exercise.
+
+The [exercise guide](gene_debugging/README.md) includes Colab setup,
+diagnostic cells, isolated-task tests, and exact architecture contracts.
+Documentation is allowed; practice without AI during the mock.
+
+```powershell
+python test.py --exercise 06 --describe
+python test.py --exercise 06 --solution own
+python test.py --exercise 06 --solution model
+```
+
+Suggested time box per mock: 20 minutes debugging + 15 minutes implementing
++ 5 minutes explaining. Reference answers remain separate.
 
 ## Adding an exercise
 
